@@ -65,17 +65,18 @@ impl From<quinn::ConnectionError> for ClientError {
 pub async fn get_client(
     addr: SocketAddr,
     hostname: &str,
+    alpn_protocols: Option<Vec<Vec<u8>>>,
 ) -> Result<(quinn::Connection, quinn::Endpoint), ClientError> {
     let roots = get_certs()?;
 
-    let client_crypto = rustls::ClientConfig::builder()
+    let mut client_crypto = rustls::ClientConfig::builder()
         .with_safe_defaults()
         .with_root_certificates(roots)
         .with_no_client_auth();
 
-    // TODO: Allow setting these
-    // pub const ALPN_QUIC_HTTP: &[&[u8]] = &[b"h3"];
-    // client_crypto.alpn_protocols = ALPN_QUIC_HTTP.iter().map(|&x| x.into()).collect();
+    if let Some(protocols) = alpn_protocols {
+        client_crypto.alpn_protocols = protocols;
+    }
 
     let client_config = quinn::ClientConfig::new(Arc::new(client_crypto));
     let mut endpoint = quinn::Endpoint::client(SocketAddr::new(

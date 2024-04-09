@@ -9,16 +9,28 @@ export type ConnectOptions = {
   hostname: string;
   port: number;
   onClose: (reason: string) => void;
+  alpnProtocols?: string[];
 };
 
 export const connect = async (options: ConnectOptions): Promise<Connection> => {
   const address = await lookup(options.hostname);
 
+  let alpnProtocols;
+
+  if (Array.isArray(options.alpnProtocols)) {
+    const textEncoder = new TextEncoder();
+
+    alpnProtocols = options.alpnProtocols.map((protocol) =>
+      textEncoder.encode(protocol)
+    );
+  }
+
   const connection = await lib.connect(
     options.port,
     address.address,
     options.hostname,
-    options.onClose
+    options.onClose,
+    alpnProtocols
   );
 
   return new Connection(connection);
