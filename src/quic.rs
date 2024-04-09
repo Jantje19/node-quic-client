@@ -1,11 +1,14 @@
 use std::{
+    io::Cursor,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
     sync::Arc,
 };
 
 use once_cell::sync::OnceCell;
 
-fn get_certs() -> Result<rustls::RootCertStore, std::io::Error> {
+fn get_certs(
+    certificate_authorities: Option<Vec<Vec<u8>>>,
+) -> Result<rustls::RootCertStore, std::io::Error> {
     static CERTS: OnceCell<rustls::RootCertStore> = OnceCell::new();
 
     CERTS
@@ -16,10 +19,13 @@ fn get_certs() -> Result<rustls::RootCertStore, std::io::Error> {
                 roots.add(&rustls::Certificate(cert.0)).unwrap();
             }
 
-            // TODO: Implement
-            // for cert in rustls_pemfile::certs(&mut std::io::BufReader::new(std::fs::File::open(path)?))? {
-            //     roots.add(&rustls::Certificate(cert)).unwrap();
-            // }
+            if let Some(certificate_authorities) = certificate_authorities {
+                for ca in certificate_authorities {
+                    for cert in rustls_pemfile::certs(&mut Cursor::new(ca))? {
+                        roots.add(&rustls::Certificate(cert)).unwrap();
+                    }
+                }
+            }
 
             Ok(roots)
         })
@@ -66,8 +72,9 @@ pub async fn get_client(
     addr: SocketAddr,
     hostname: &str,
     alpn_protocols: Option<Vec<Vec<u8>>>,
+    certificate_authorities: Option<Vec<Vec<u8>>>,
 ) -> Result<(quinn::Connection, quinn::Endpoint), ClientError> {
-    let roots = get_certs()?;
+    let roots = get_certs(certificate_authorities)?;
 
     let mut client_crypto = rustls::ClientConfig::builder()
         .with_safe_defaults()

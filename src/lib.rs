@@ -28,31 +28,44 @@ impl Finalize for Connection {
     }
 }
 
+fn to_uint8_vec<'a, C>(
+    cx: &mut C,
+    value: Option<Handle<JsArray>>,
+) -> Result<Option<Vec<Vec<u8>>>, neon::result::Throw>
+where
+    C: Context<'a>,
+{
+    Ok(match value {
+        None => None,
+        Some(protocols) => {
+            let value: Result<Vec<_>, neon::result::Throw> = protocols
+                .to_vec(cx)?
+                .into_iter()
+                .map(|entry| {
+                    use neon::types::buffer::TypedArray;
+
+                    entry
+                        .downcast_or_throw(cx)
+                        .map(|handle: Handle<JsUint8Array>| handle.as_slice(cx).to_vec())
+                })
+                .collect();
+
+            Some(value?)
+        }
+    })
+}
+
 fn connect(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let port = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
     let ip = cx.argument::<JsString>(1)?.value(&mut cx);
     let hostname = cx.argument::<JsString>(2)?.value(&mut cx);
     let on_close = cx.argument::<JsFunction>(3)?.root(&mut cx);
     let alpn_protocols: Option<Handle<JsArray>> = cx.argument::<JsValue>(4)?.downcast(&mut cx).ok();
+    let certificate_authorities: Option<Handle<JsArray>> =
+        cx.argument::<JsValue>(5)?.downcast(&mut cx).ok();
 
-    let alpn_protocols = match alpn_protocols {
-        None => None,
-        Some(protocols) => {
-            let value: Result<Vec<_>, neon::result::Throw> = protocols
-                .to_vec(&mut cx)?
-                .into_iter()
-                .map(|entry| {
-                    use neon::types::buffer::TypedArray;
-
-                    entry
-                        .downcast_or_throw(&mut cx)
-                        .map(|handle: Handle<JsUint8Array>| handle.as_slice(&cx).to_vec())
-                })
-                .collect();
-
-            Some(value?)
-        }
-    };
+    let alpn_protocols = to_uint8_vec(&mut cx, alpn_protocols)?;
+    let certificate_authorities = to_uint8_vec(&mut cx, certificate_authorities)?;
 
     let addr = SocketAddr::new(ip.parse().unwrap(), port);
     let rt = runtime(&mut cx)?;
@@ -63,7 +76,8 @@ fn connect(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let (deferred, promise) = cx.promise();
 
     rt.spawn(async move {
-        let result = quic::get_client(addr, &hostname, alpn_protocols).await;
+        let result =
+            quic::get_client(addr, &hostname, alpn_protocols, certificate_authorities).await;
 
         deferred.settle_with(&channel, move |mut cx| {
             let (connection, endpoint) = result.or_else(|err| cx.throw_error(err.to_string()))?;

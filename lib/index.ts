@@ -10,11 +10,12 @@ export type ConnectOptions = {
   port: number;
   onClose: (reason: string) => void;
   alpnProtocols?: string[];
+  certificateAuthorities?: Uint8Array[];
 };
 
-export const connect = async (options: ConnectOptions): Promise<Connection> => {
-  const address = await lookup(options.hostname);
-
+export const rawConnect = async (
+  options: ConnectOptions & { ipAddress: string }
+) => {
   let alpnProtocols;
 
   if (Array.isArray(options.alpnProtocols)) {
@@ -27,13 +28,20 @@ export const connect = async (options: ConnectOptions): Promise<Connection> => {
 
   const connection = await lib.connect(
     options.port,
-    address.address,
+    options.ipAddress,
     options.hostname,
     options.onClose,
-    alpnProtocols
+    alpnProtocols,
+    options.certificateAuthorities
   );
 
   return new Connection(connection);
+};
+
+export const connect = async (options: ConnectOptions): Promise<Connection> => {
+  const address = await lookup(options.hostname);
+
+  return rawConnect({ ...options, ipAddress: address.address });
 };
 
 export type StreamOptions = {
@@ -70,6 +78,7 @@ class Connection {
 }
 
 class Stream {
+  // Not used but necessary to prevent garbage collection
   private connection: unknown;
   private stream: unknown;
 
