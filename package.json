@@ -1,0 +1,28 @@
+{
+  "name": "node-quic-client",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "dist/*"
+  ],
+  "scripts": {
+    "build-rust": "cargo-cp-artifact -nc lib/lib.node -- cargo build --message-format=json-render-diagnostics",
+    "build-rust-debug": "npm run build-rust --",
+    "build-rust-release": "npm run build-rust -- --release",
+    "test-rust": "cargo test",
+    "build-ts": "swc --strip-leading-paths ./lib/index.ts -d dist",
+    "dev": "node --import @swc-node/register/esm-register example/index.ts",
+    "build-debug": "npm run build-rust-debug && npm run build-ts && node -e \"require('fs').cpSync('lib/lib.node', 'dist/lib.node')\"",
+    "build-release": "npm run build-rust-release && tsc && npm run build-ts && node -e \"require('fs').cpSync('lib/lib.node', 'dist/lib.node')\""
+  },
+  "devDependencies": {
+    "@swc-node/register": "^1.9.0",
+    "@swc/cli": "^0.3.12",
+    "@swc/core": "^1.4.12",
+    "@types/node": "^20.12.5",
+    "cargo-cp-artifact": "^0.1",
+    "typescript": "^5.4.4"
+  }
+}
