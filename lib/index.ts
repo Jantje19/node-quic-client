@@ -11,6 +11,10 @@ export type ConnectOptions = {
   onClose: (reason: string) => void;
   alpnProtocols?: string[];
   certificateAuthorities?: Uint8Array[];
+  clientAuthentication?: {
+    certificate: Buffer;
+    key: Buffer;
+  };
 };
 
 export const rawConnect = async (
@@ -26,13 +30,26 @@ export const rawConnect = async (
     );
   }
 
+  let clientAuthentication;
+
+  if (
+    options.clientAuthentication?.certificate &&
+    options.clientAuthentication?.key
+  ) {
+    clientAuthentication = [
+      options.clientAuthentication.certificate,
+      options.clientAuthentication.key,
+    ];
+  }
+
   const connection = await lib.connect(
     options.port,
     options.ipAddress,
     options.hostname,
     options.onClose,
     alpnProtocols,
-    options.certificateAuthorities
+    options.certificateAuthorities,
+    clientAuthentication
   );
 
   return new Connection(connection);

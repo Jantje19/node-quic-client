@@ -64,6 +64,22 @@ fn connect(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let certificate_authorities: Option<Handle<JsArray>> =
         cx.argument::<JsValue>(5)?.downcast(&mut cx).ok();
 
+    let client_auth = {
+        let args: Option<Handle<JsArray>> = cx.argument::<JsValue>(6)?.downcast(&mut cx).ok();
+
+        to_uint8_vec(&mut cx, args)?.and_then(|args| {
+            if args.len() < 2 {
+                return None;
+            }
+
+            let mut args = args.into_iter();
+            let cert = args.next().unwrap();
+            let key = args.next().unwrap();
+
+            Some((cert, key))
+        })
+    };
+
     let alpn_protocols = to_uint8_vec(&mut cx, alpn_protocols)?;
     let certificate_authorities = to_uint8_vec(&mut cx, certificate_authorities)?;
 
@@ -76,8 +92,14 @@ fn connect(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let (deferred, promise) = cx.promise();
 
     rt.spawn(async move {
-        let result =
-            quic::get_client(addr, &hostname, alpn_protocols, certificate_authorities).await;
+        let result = quic::get_client(
+            addr,
+            &hostname,
+            alpn_protocols,
+            certificate_authorities,
+            client_auth,
+        )
+        .await;
 
         deferred.settle_with(&channel, move |mut cx| {
             let (connection, endpoint) = result.or_else(|err| cx.throw_error(err.to_string()))?;
