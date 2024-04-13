@@ -8,14 +8,16 @@
     "dist/*"
   ],
   "scripts": {
-    "build-rust": "cargo-cp-artifact -nc lib/lib.node -- cargo build --message-format=json-render-diagnostics",
+    "build-rust": "cargo-cp-artifact -nc dist/lib.node -- cargo build --message-format=json-render-diagnostics",
     "build-rust-debug": "npm run build-rust --",
     "build-rust-release": "npm run build-rust -- --release",
     "test-rust": "cargo test",
     "build-ts": "swc --strip-leading-paths ./lib/index.ts -d dist",
     "dev": "node --import @swc-node/register/esm-register example/index.ts",
-    "build-debug": "npm run build-rust-debug && npm run build-ts && node -e \"require('fs').cpSync('lib/lib.node', 'dist/lib.node')\"",
-    "build-release": "npm run build-rust-release && tsc && npm run build-ts && node -e \"require('fs').cpSync('lib/lib.node', 'dist/lib.node')\""
+    "build-debug": "npm run build-rust-debug && npm run build-ts",
+    "build-release": "npm run build-rust-release && tsc && npm run build-ts && node -e \"require('fs').cpSync('lib/lib.node', 'dist/lib.node')\"",
+    "install": "npm run --silent install:download || npm run --silent build-rust-release",
+    "install:download": "node-pre-gyp install --fallback-to-build=false"
   },
   "devDependencies": {
     "@swc-node/register": "^1.9.0",
@@ -24,5 +26,16 @@
     "@types/node": "^20.12.5",
     "cargo-cp-artifact": "^0.1",
     "typescript": "^5.4.4"
+  },
+  "binary": {
+    "module_name": "lib",
+    "module_path": "./dist",
+    "remote_path": "{version}",
+    "package_name": "{platform}-{arch}.tar.gz",
+    "host": "https://github.com/jantje19/node-quic-client/releases/download/",
+    "pkg_path": "."
+  },
+  "dependencies": {
+    "@mapbox/node-pre-gyp": "^1.0.11"
   }
 }
