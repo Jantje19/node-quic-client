@@ -1,8 +1,49 @@
 # node-quic-client
 
+A simple Quic protocol client for NodeJS written in Rust. Internally it uses the awesome [Quinn crate](https://crates.io/crates/quinn).
+
 This project was bootstrapped by [create-neon](https://www.npmjs.com/package/create-neon).
 
-## Installing node-quic-client
+## Prebuilds
+
+This package has three prebuilds: Windows (x64), Linux (x64), and Linux (ARM64). Other platforms fallback to building from source. This requires the Rust compiler (along with Cargo) to be installed on your system. The `rustup` installer will set all this up for you. Follow the instructions on [the official Rust lang website](https://www.rust-lang.org/learn/get-started).
+
+## Example
+
+```ts
+import * as quic from "node-quic-client";
+
+const connection = await quic.connect({
+  hostname: "cloudflare.com",
+  port: 443,
+  alpnProtocols: ["h3"],
+  onClose: (reason) => {
+    console.log("Connection closed: " + reason);
+  },
+});
+
+const stream = await connection.createStream({
+  onError: (err) => {
+    console.log("Stream error", err);
+  },
+  onClose: (reason) => {
+    console.log("Stream closed: " + reason);
+    connection.close(0).catch(console.error);
+  },
+  onData: (...args) => {
+    console.log("Received packet", args);
+    stream.close().catch(console.error);
+  },
+});
+
+await stream.write(Buffer.from("Hello, World!"));
+```
+
+Please note that this example sends `'Hello, World!'` to the cloudflare.com website. This is not a valid HTTP/3 packet and causes the website to never send back a result.
+
+## Building the project
+
+### Installing node-quic-client
 
 Installing node-quic-client requires a [supported version of Node and Rust](https://github.com/neon-bindings/neon#platform-support).
 
@@ -14,7 +55,7 @@ $ pnpm install
 
 This fully installs the project, including installing any dependencies and running the build.
 
-## Building node-quic-client
+### Building node-quic-client
 
 If you have already installed the project and only want to run the build, run:
 
@@ -24,7 +65,7 @@ $ npm run build-debug
 
 This command uses the [cargo-cp-artifact](https://github.com/neon-bindings/cargo-cp-artifact) utility to run the Rust build and copy the built library into `./lib/index.node`.
 
-## Exploring node-quic-client
+### Exploring node-quic-client
 
 After building node-quic-client, you can explore its exports at the Node REPL:
 
@@ -34,15 +75,15 @@ $ node
 > require('.')
 ```
 
-## Available Scripts
+### Available Scripts
 
 In the project directory, you can run:
 
-### `pnpm install`
+#### `pnpm install`
 
 Installs the project, including running `pnpm run build`.
 
-### `pnpm build`
+#### `pnpm build`
 
 Builds the Node addon (`index.node`) from source.
 
@@ -52,15 +93,15 @@ Additional [`cargo build`](https://doc.rust-lang.org/cargo/commands/cargo-build.
 pnpm run build -- --feature=beetle
 ```
 
-#### `pnpm build-release`
+##### `pnpm build-release`
 
 Same as [`pnpm build-debug`](#npm-build) but, builds the module with the [`release`](https://doc.rust-lang.org/cargo/reference/profiles.html#release) profile. Release builds will compile slower, but run faster.
 
-### Tests
+#### Tests
 
 Runs the unit tests by calling `cargo test`. You can learn more about [adding tests to your Rust code](https://doc.rust-lang.org/book/ch11-01-writing-tests.html) from the [Rust book](https://doc.rust-lang.org/book/).
 
-## Learn More
+### Learn More
 
 To learn more about Neon, see the [Neon documentation](https://neon-bindings.com).
 
