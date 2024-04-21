@@ -56,7 +56,7 @@ jobs:
           path: build/*.tar.gz
 
   publish-release:
-    name: Publish release
+    name: Publish GitHub release
     needs: build
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
@@ -80,10 +80,12 @@ jobs:
       - uses: pnpm/action-setup@v3
         with:
           version: 9
+      # Setup .npmrc file to publish to npm
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          registry-url: "https://registry.npmjs.org"
           cache: "pnpm"
       - name: Install packages
         run: pnpm install
