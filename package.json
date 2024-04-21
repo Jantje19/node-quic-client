@@ -23,7 +23,7 @@
     "build-ts": "swc --strip-leading-paths ./lib/index.ts -d dist",
     "dev": "node --import @swc-node/register/esm-register example/index.ts",
     "build-debug": "npm run build-rust-debug && npm run build-ts",
-    "build-release": "npm run build-rust-release && tsc && npm run build-ts && node -e \"require('fs').cpSync('lib/lib.node', 'dist/lib.node')\"",
+    "build-release": "npm run build-rust-release && tsc && npm run build-ts",
     "install": "npm run --silent install:download || npm run --silent build-rust-release",
     "install:download": "node-pre-gyp install --fallback-to-build=false"
   },
@@ -32,6 +32,7 @@
     "@swc/cli": "^0.3.12",
     "@swc/core": "^1.4.12",
     "@types/node": "^20.12.5",
+    "archiver": "^7.0.1",
     "cargo-cp-artifact": "^0.1",
     "typescript": "^5.4.4"
   },
