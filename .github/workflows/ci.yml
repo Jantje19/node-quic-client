@@ -48,6 +48,14 @@ jobs:
         run: pnpm install
       - name: Package build archive
         run: pnpm run build-rust-release && node .github/workflows/build-package.js
+      - if: matrix.os == 'ubuntu-latest'
+        name: Package build ARM archive
+        run: |
+          sudo apt update
+          sudo apt install -y gcc-aarch64-linux-gnu
+          rustup target install aarch64-unknown-linux-gnu
+          RUSTFLAGS="-C linker=aarch64-linux-gnu-gcc" pnpm run build-rust-release --target aarch64-unknown-linux-gnu
+          node .github/workflows/build-package.js arm64
       - name: Save build archive
         uses: actions/upload-artifact@v2
         with:

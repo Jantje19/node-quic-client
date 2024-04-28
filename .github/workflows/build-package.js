@@ -5,14 +5,18 @@ import { pipeline } from "node:stream/promises";
 import { join } from "node:path";
 import archiver from "archiver";
 
+const arch = process.argv[2] || process.arch;
+
 const buildDir = "./build";
 const nativeModulePathInZip = join("dist", "lib.node");
 const nativeModulePath = join(process.cwd(), nativeModulePathInZip);
 
-await fs.mkdir(buildDir);
+try {
+  await fs.mkdir(buildDir);
+} catch (_) {}
 
 const writeStream = createWriteStream(
-  join(buildDir, `${process.platform}-${process.arch}.tar.gz`)
+  join(buildDir, `${process.platform}-${arch}.tar.gz`)
 );
 
 const archive = archiver("tar", {
