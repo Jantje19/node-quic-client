@@ -8,7 +8,7 @@ This project was bootstrapped by [create-neon](https://www.npmjs.com/package/cre
 
 ## Prebuilds
 
-This package has three prebuilds: Windows (x64), Linux (x64 & ARM64), and MacOS (x64). Other platforms fallback to building from source. This requires the Rust compiler (along with Cargo) to be installed on your system. The `rustup` installer will set all this up for you. Follow the instructions on [the official Rust lang website](https://www.rust-lang.org/learn/get-started).
+This package has three prebuilds: Windows (x64), Linux (x64 & ARM64), and MacOS (ARM64). Other platforms fallback to building from source. This requires the Rust compiler (along with Cargo) to be installed on your system. The `rustup` installer will set all this up for you. Follow the instructions on [the official Rust lang website](https://www.rust-lang.org/learn/get-started).
 
 ## Example
 
