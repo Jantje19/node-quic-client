@@ -185,11 +185,11 @@ async fn handle_read(
             Err(e) => match e {
                 quinn::ReadError::ConnectionLost(e) => {
                     handle_close(e.to_string());
-                    break;
+                    return;
                 }
                 quinn::ReadError::UnknownStream | quinn::ReadError::Reset(_) => {
                     handle_close(e.to_string());
-                    break;
+                    return;
                 }
                 quinn::ReadError::IllegalOrderedRead | quinn::ReadError::ZeroRttRejected => {
                     let callback = error_callback.clone();
@@ -205,8 +205,9 @@ async fn handle_read(
                     });
                 }
             },
-            Ok(option) => {
-                if let Some(n) = option {
+            Ok(option) => match option {
+                None => break,
+                Some(n) => {
                     let packet = buf[..n].to_vec();
 
                     let callback = data_callback.clone();
@@ -230,13 +231,15 @@ async fn handle_read(
                         Ok(())
                     });
                 }
-            }
+            },
         }
     }
+
+    handle_close(String::from("closed"));
 }
 
 fn create_stream(mut cx: FunctionContext) -> JsResult<JsPromise> {
-    let connection = (**cx.argument::<JsBox<Connection>>(0)?).clone().connection;
+    let connection = (**cx.argument::<JsBox<Connection>>(0)?).clone();
     let on_data = cx.argument::<JsFunction>(1)?.root(&mut cx);
     let on_close = cx.argument::<JsFunction>(2)?.root(&mut cx);
     let on_error = cx.argument::<JsFunction>(3)?.root(&mut cx);
@@ -251,7 +254,7 @@ fn create_stream(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let error_channel = cx.channel();
 
     rt.spawn(async move {
-        let result = connection.open_bi().await;
+        let result = connection.connection.open_bi().await;
 
         deferred.settle_with(&channel, move |mut cx| {
             let (send, recv) = result.or_else(|err| cx.throw_error(err.to_string()))?;
@@ -266,10 +269,12 @@ fn create_stream(mut cx: FunctionContext) -> JsResult<JsPromise> {
                 .await
             });
 
-            Ok(cx.boxed(Stream {
+            let stream = Stream {
                 send: Arc::new(Mutex::new(send)),
                 handle: Arc::new(handle),
-            }))
+            };
+
+            Ok(cx.boxed(stream))
         });
     });
 
@@ -291,13 +296,13 @@ fn write_stream(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let result = {
             let mut send = stream.send.lock().await;
 
-            send.write(&packet).await
+            send.write_all(&packet).await
         };
 
         deferred.settle_with(&channel, move |mut cx| {
-            let bytes_written = result.or_else(|err| cx.throw_error(err.to_string()))?;
+            result.or_else(|err| cx.throw_error(err.to_string()))?;
 
-            Ok(cx.number(bytes_written as f64))
+            Ok(cx.undefined())
         });
     });
 
@@ -347,11 +352,21 @@ fn close_write(mut cx: FunctionContext) -> JsResult<JsPromise> {
 }
 
 fn close_connection(mut cx: FunctionContext) -> JsResult<JsPromise> {
-    use neon::types::buffer::TypedArray;
-
     let connection = (**cx.argument::<JsBox<Connection>>(0)?).clone();
     let code = cx.argument::<JsNumber>(1)?.value(&mut cx);
-    let reason = cx.argument::<JsTypedArray<u8>>(2)?.as_slice(&cx).to_vec();
+    let reason = {
+        let arg = cx.argument::<JsValue>(2)?;
+
+        if arg.is_a::<JsUint8Array, _>(&mut cx) {
+            use neon::types::buffer::TypedArray;
+
+            let arr: Handle<JsUint8Array> = arg.downcast_or_throw(&mut cx)?;
+
+            arr.as_slice(&cx).to_vec()
+        } else {
+            Vec::new()
+        }
+    };
 
     let rt = runtime(&mut cx)?;
 
@@ -367,13 +382,21 @@ fn close_connection(mut cx: FunctionContext) -> JsResult<JsPromise> {
     Ok(promise)
 }
 
+fn get_remote(mut cx: FunctionContext) -> JsResult<JsString> {
+    let connection = (**cx.argument::<JsBox<Connection>>(0)?).clone();
+
+    Ok(cx.string(connection.connection.remote_address().to_string()))
+}
+
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("connect", connect)?;
     cx.export_function("create_stream", create_stream)?;
-    cx.export_function("write", write_stream)?;
+    cx.export_function("write_stream", write_stream)?;
     cx.export_function("close_write", close_write)?;
     cx.export_function("close_stream", close_stream)?;
+    cx.export_function("get_remote", get_remote)?;
     cx.export_function("close_connection", close_connection)?;
+
     Ok(())
 }

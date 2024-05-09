@@ -13,7 +13,7 @@ default = ["rustls"]
 [dependencies]
 neon = "1"
 once_cell = "1.19.0"
-quinn = { version = "0.10.2", features = ["ring"] }
+quinn = { version = "0.10.2", features = ["ring", "runtime-tokio"] }
 rustls = { version = "0.21.11", default-features = false, features = ["quic"], optional = true }
 rustls-native-certs = "0.6.3"
 rustls-pemfile = "1.0.4"

@@ -17,10 +17,11 @@ const stream = await connection.createStream({
     console.log("Stream closed: " + reason);
     connection.close(0).catch(console.error);
   },
-  onData: (...args) => {
-    console.log("Received packet", args);
-    stream.close().catch(console.error);
+  onData: (data) => {
+    console.log("Received packet", Buffer.from(data).toString());
   },
 });
 
-await stream.write(Buffer.from("Hello, World!"));
+await stream.write(Buffer.from("Hello"));
+
+console.log("Wrote");

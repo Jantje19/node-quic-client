@@ -82,30 +82,35 @@ class Connection {
       options.onError
     );
 
-    return new Stream(this.connection, stream);
+    return new Stream(this, stream);
   }
 
   async close(errorCode?: number, reason?: string) {
-    await lib.close_connection(
-      this.connection,
-      errorCode ?? 0,
-      new TextEncoder().encode(reason ?? "")
-    );
+    const fullReason = reason ?? "";
+    const buffer =
+      fullReason.length > 0 ? new TextEncoder().encode(fullReason) : null;
+
+    await lib.close_connection(this.connection, errorCode ?? 0, buffer);
+  }
+
+  getRemoteIp() {
+    return lib.get_remote(this.connection);
   }
 }
 
 class Stream {
-  // Not used but necessary to prevent garbage collection
-  private connection: unknown;
+  private connection: Connection;
   private stream: unknown;
 
-  constructor(connection: unknown, stream: unknown) {
+  constructor(connection: Connection, stream: unknown) {
     this.connection = connection;
     this.stream = stream;
   }
 
-  async write(packet: Buffer): Promise<number> {
-    return lib.write(this.stream, packet);
+  async write(packet: Uint8Array): Promise<void> {
+    if (packet.length > 0) {
+      await lib.write_stream(this.stream, packet);
+    }
   }
 
   async close() {
@@ -114,5 +119,9 @@ class Stream {
 
   async finish() {
     await lib.close_write(this.stream);
+  }
+
+  getConnection() {
+    return this.connection;
   }
 }
