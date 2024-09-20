@@ -8,7 +8,7 @@ This project was bootstrapped by [create-neon](https://www.npmjs.com/package/cre
 
 ## Prebuilds
 
-This package has three prebuilds: Windows (x64), Linux (x64 & ARM64), and MacOS (ARM64). Other platforms fallback to building from source. This requires the Rust compiler (along with Cargo) to be installed on your system. The `rustup` installer will set all this up for you. Follow the instructions on [the official Rust lang website](https://www.rust-lang.org/learn/get-started).
+This package has three prebuilds: Windows (x64), Linux (x64 & ARM64), and MacOS (ARM64). Other platforms fall back to building from source. This requires the Rust compiler (along with Cargo) to be installed on your system. The `rustup` installer will set all this up for you. Follow the instructions on [the official Rust lang website](https://www.rust-lang.org/learn/get-started).
 
 ## Example
 
@@ -19,26 +19,43 @@ const connection = await quic.connect({
   hostname: "cloudflare.com",
   port: 443,
   alpnProtocols: ["h3"],
-  onClose: (reason) => {
+  onError(err) {
+    console.error("Connection error");
+    console.error(err);
+  },
+  onClose(reason) {
     console.log("Connection closed: " + reason);
+  },
+  onStream(partialStream) {
+    const stream = partialStream.initialize({
+      onError: console.error,
+      onClose: () => {},
+      onData: () => {},
+    });
+
+    console.log("New stream. Closing immediately...");
+    stream
+      .close()
+      .catch((err) => console.error("Error while closing the stream: " + err));
   },
 });
 
 const stream = await connection.createStream({
-  onError: (err) => {
-    console.log("Stream error", err);
+  onError(err) {
+    console.error("Stream error");
+    console.error(err);
   },
-  onClose: (reason) => {
+  onClose(reason) {
     console.log("Stream closed: " + reason);
-    connection.close(0).catch(console.error);
+    this.getConnection().close(0).catch(console.error);
   },
-  onData: (...args) => {
-    console.log("Received packet", args);
-    stream.close().catch(console.error);
+  onData(data) {
+    console.log("Received packet", Buffer.from(data).toString("hex"));
+    this.close().catch(console.error);
   },
 });
 
-await stream.write(Buffer.from("Hello, World!"));
+await stream.write(Buffer.from("Hello"));
 ```
 
 Please note that this example sends `'Hello, World!'` to the cloudflare.com website. This is not a valid HTTP/3 packet and causes the website to never send back a result.

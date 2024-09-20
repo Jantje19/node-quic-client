@@ -6,24 +6,56 @@ use std::{
 };
 
 use once_cell::sync::OnceCell;
+use quinn::crypto::rustls::QuicClientConfig;
+use rustls_native_certs::CertificateResult;
+
+#[derive(Debug)]
+pub enum GetCertsError {
+    NativeLoad(Vec<rustls_native_certs::Error>),
+    CertificateAuthority(std::io::Error),
+    Load(rustls::Error),
+}
+
+impl GetCertsError {
+    #[allow(clippy::inherent_to_string)]
+    pub fn to_string(&self) -> String {
+        match self {
+            GetCertsError::NativeLoad(v) => {
+                format!("Unable to load native certificate(s): {:?}", v)
+            }
+            GetCertsError::CertificateAuthority(e) => {
+                format!("Unable to load certificate authority file: {e}")
+            }
+            GetCertsError::Load(e) => format!("Unable to load certificate: {e}"),
+        }
+    }
+}
 
 fn get_certs(
     certificate_authorities: Option<Vec<Vec<u8>>>,
-) -> Result<rustls::RootCertStore, std::io::Error> {
+) -> Result<rustls::RootCertStore, GetCertsError> {
     static CERTS: OnceCell<rustls::RootCertStore> = OnceCell::new();
 
     CERTS
         .get_or_try_init(|| {
             let mut roots = rustls::RootCertStore::empty();
 
-            for cert in rustls_native_certs::load_native_certs()? {
-                roots.add(&rustls::Certificate(cert.0)).unwrap();
+            let CertificateResult { certs, errors, .. } = rustls_native_certs::load_native_certs();
+
+            if !errors.is_empty() {
+                return Err(GetCertsError::NativeLoad(errors));
+            }
+
+            for cert in certs {
+                roots.add(cert).map_err(GetCertsError::Load)?;
             }
 
             if let Some(certificate_authorities) = certificate_authorities {
                 for ca in certificate_authorities {
-                    for cert in rustls_pemfile::certs(&mut Cursor::new(ca))? {
-                        roots.add(&rustls::Certificate(cert)).unwrap();
+                    for cert in rustls_pemfile::certs(&mut Cursor::new(ca)) {
+                        let cert = cert.map_err(GetCertsError::CertificateAuthority)?;
+
+                        roots.add(cert).map_err(GetCertsError::Load)?;
                     }
                 }
             }
@@ -35,7 +67,7 @@ fn get_certs(
 
 #[derive(Debug)]
 pub enum ClientError {
-    CertRootStore(std::io::Error),
+    CertRootStore(GetCertsError),
     Io(std::io::Error),
     QuinnConnect(quinn::ConnectError),
     QuinnConnection(quinn::ConnectionError),
@@ -84,18 +116,14 @@ pub async fn get_client(
 ) -> Result<(quinn::Connection, quinn::Endpoint), ClientError> {
     let roots = get_certs(certificate_authorities).map_err(ClientError::CertRootStore)?;
 
-    let client_crypto = rustls::ClientConfig::builder()
-        .with_safe_defaults()
-        .with_root_certificates(roots);
+    let client_crypto = rustls::ClientConfig::builder().with_root_certificates(roots);
 
     let mut client_crypto = match client_auth {
         None => client_crypto.with_no_client_auth(),
         Some(client_auth) => {
             let certs = rustls_pemfile::certs(&mut Cursor::new(client_auth.0))
-                .map_err(ClientError::Io)?
-                .into_iter()
-                .map(rustls::Certificate)
-                .collect();
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(ClientError::Io)?;
 
             let key = rustls_pemfile::read_one(&mut Cursor::new(client_auth.1))
                 .map_err(ClientError::InvalidClientAuthKey)?
@@ -106,16 +134,19 @@ pub async fn get_client(
                     ))
                 })?;
 
-            let key = match key {
-                rustls_pemfile::Item::X509Certificate(v) => v,
-                rustls_pemfile::Item::RSAKey(v) => v,
-                rustls_pemfile::Item::PKCS8Key(v) => v,
-                rustls_pemfile::Item::ECKey(v) => v,
-                rustls_pemfile::Item::Crl(v) => v,
-                _ => Vec::new(),
+            let key: rustls::pki_types::PrivateKeyDer = match key {
+                rustls_pemfile::Item::Pkcs1Key(v) => v.into(),
+                rustls_pemfile::Item::Pkcs8Key(v) => v.into(),
+                rustls_pemfile::Item::Sec1Key(v) => v.into(),
+                _ => {
+                    return Err(ClientError::InvalidClientAuthKey(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "Invalid file type",
+                    )))
+                }
             };
 
-            client_crypto.with_client_auth_cert(certs, rustls::PrivateKey(key))?
+            client_crypto.with_client_auth_cert(certs, key)?
         }
     };
 
@@ -123,10 +154,13 @@ pub async fn get_client(
         client_crypto.alpn_protocols = protocols;
     }
 
+    client_crypto.key_log = Arc::new(rustls::KeyLogFile::new());
+
     let mut transport_config = quinn::TransportConfig::default();
     transport_config.keep_alive_interval(Some(Duration::from_secs(1)));
 
-    let mut client_config = quinn::ClientConfig::new(Arc::new(client_crypto));
+    let client_config = QuicClientConfig::try_from(client_crypto).unwrap();
+    let mut client_config = quinn::ClientConfig::new(Arc::new(client_config));
     client_config.transport_config(Arc::new(transport_config));
 
     let mut endpoint = quinn::Endpoint::client(SocketAddr::new(

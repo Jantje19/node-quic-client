@@ -7,22 +7,19 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib"]
 
-[features]
-default = ["rustls"]
-
 [dependencies]
-neon = "1"
+neon = "1.0.0"
 once_cell = "1.19.0"
-quinn = { version = "0.10.2", features = ["ring", "runtime-tokio"] }
-rustls = { version = "0.21.11", default-features = false, features = ["quic"], optional = true }
-rustls-native-certs = "0.6.3"
-rustls-pemfile = "1.0.4"
-tokio = { version = "1.37.0", features = ["rt-multi-thread", "macros"] }
+quinn = { version = "0.11.5", features = ["ring", "runtime-tokio"] }
+rustls = { version = "0.23.13", default-features = false, features = ["ring", "std"] }
+rustls-native-certs = "0.8.0"
+rustls-pemfile = "2.1.3"
+tokio = { version = "1.40.0", features = ["rt-multi-thread", "macros"] }
+tokio-util = "0.7.12"
 
 [patch.crates-io]
 neon = { git = "https://github.com/neon-bindings/neon.git" }
 
 [profile.release]
-debug = false
 lto = "fat"
-strip = "symbols"
+strip = true
