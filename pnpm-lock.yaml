@@ -9,29 +9,29 @@ importers:
   .:
     dependencies:
       '@mapbox/node-pre-gyp':
-        specifier: 1.0.11
+        specifier: ^1.0.11
         version: 1.0.11
     devDependencies:
       '@swc-node/register':
-        specifier: 1.10.9
+        specifier: ^1.10.9
         version: 1.10.9(@swc/core@1.7.26)(@swc/types@0.1.12)(typescript@5.6.2)
       '@swc/cli':
-        specifier: 0.4.0
+        specifier: ^0.4.0
         version: 0.4.0(@swc/core@1.7.26)
       '@swc/core':
-        specifier: 1.7.26
+        specifier: ^1.7.26
         version: 1.7.26
       '@types/node':
-        specifier: 22.5.5
+        specifier: ^22.5.5
         version: 22.5.5
       archiver:
-        specifier: 7.0.1
+        specifier: ^7.0.1
         version: 7.0.1
       cargo-cp-artifact:
-        specifier: 0.1.9
+        specifier: ^0.1.9
         version: 0.1.9
       typescript:
-        specifier: 5.6.2
+        specifier: ^5.6.2
         version: 5.6.2
 
 packages:
@@ -425,15 +425,6 @@ packages:
     resolution: {integrity: sha512-iRDPJKUPVEND7dHPO8rkbOnPpyDygcDFtWjpeWNCgy8WP2rXcxXL8TskReQl6OrB2G7+UJrags1q15Fudc7G6w==}
     engines: {node: '>= 8'}
 
-  debug@4.3.4:
-    resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
-    engines: {node: '>=6.0'}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
-
   debug@4.3.7:
     resolution: {integrity: sha512-Er2nc/H7RrMXZBFCEim6TCmMk02Z8vLC2Rbi1KEBggpo0fS6l0S1nnapwmIi3yW/+GOJap1Krg4w0Hg80oCqgQ==}
     engines: {node: '>=6.0'}
@@ -736,9 +727,6 @@ packages:
     resolution: {integrity: sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==}
     engines: {node: '>=10'}
     hasBin: true
-
-  ms@2.1.2:
-    resolution: {integrity: sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==}
 
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
@@ -1338,7 +1326,7 @@ snapshots:
 
   agent-base@6.0.2:
     dependencies:
-      debug: 4.3.4
+      debug: 4.3.7
     transitivePeerDependencies:
       - supports-color
 
@@ -1498,10 +1486,6 @@ snapshots:
       path-key: 3.1.1
       shebang-command: 2.0.0
       which: 2.0.2
-
-  debug@4.3.4:
-    dependencies:
-      ms: 2.1.2
 
   debug@4.3.7:
     dependencies:
@@ -1684,7 +1668,7 @@ snapshots:
   https-proxy-agent@5.0.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.3.4
+      debug: 4.3.7
     transitivePeerDependencies:
       - supports-color
 
@@ -1797,8 +1781,6 @@ snapshots:
       yallist: 4.0.0
 
   mkdirp@1.0.4: {}
-
-  ms@2.1.2: {}
 
   ms@2.1.3: {}
 
